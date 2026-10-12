@@ -1,0 +1,458 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}body{margin:0}</style></head><body>
+<title>Трекер цикла Луна</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Layout: one-column phone app — cycle ring on top, month calendar, bottom tab bar, day editor as a bottom sheet */
+:root{
+  --bg:#FAF7FB; --surface:#FFFFFF; --ink:#1F1A24; --muted:#6E6577; --line:#E8E1EC;
+  --berry:#B8325A; --berry-soft:#F8DDE6; --sea:#0B8A82; --sea-soft:#D3EFEB; --on:#FFFFFF; --warn:#B26A00;
+  --display:'Unbounded','Onest',system-ui,sans-serif;
+  --body:'Onest',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#16121A; --surface:#221C27; --ink:#F2EBF5; --muted:#A99FB2; --line:#382E40;
+  --berry:#E35C84; --berry-soft:#4B2233; --sea:#3FC4B8; --sea-soft:#173C39; --on:#170F14; --warn:#F0A63A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#16121A; --surface:#221C27; --ink:#F2EBF5; --muted:#A99FB2; --line:#382E40;
+  --berry:#E35C84; --berry-soft:#4B2233; --sea:#3FC4B8; --sea-soft:#173C39; --on:#170F14; --warn:#F0A63A; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--berry);outline-offset:2px}
+.app{max-width:480px;margin:0 auto;padding-inline:16px;padding-block:12px calc(88px + env(safe-area-inset-bottom,0px))}
+.top{display:flex;align-items:center;justify-content:space-between;padding-block:4px 8px}
+.brand{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.02em}
+.brand span{color:var(--berry)}
+.today-lbl{color:var(--muted);font-size:13px}
+.view[hidden]{display:none}
+
+/* hero */
+.hero{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center;padding-block:8px 16px}
+.ring{width:150px;height:150px;position:relative}
+.ring svg{width:100%;height:100%;display:block}
+.ring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ring-c b{font-family:var(--display);font-size:34px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.ring-c small{color:var(--muted);font-size:12px;margin-top:4px}
+.status{min-width:0;display:flex;flex-direction:column;gap:6px}
+.phase{display:inline-flex;align-self:flex-start;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:3px 10px;border-radius:999px;background:var(--line);color:var(--ink)}
+.phase.per{background:var(--berry-soft);color:var(--berry)}
+.phase.fert,.phase.ov{background:var(--sea-soft);color:var(--sea)}
+.phase.late{background:var(--berry-soft);color:var(--warn)}
+.headline{font-size:19px;font-weight:600;line-height:1.25;text-wrap:balance}
+.sub{color:var(--muted);font-size:14px}
+.quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.btn{border:0;border-radius:12px;padding:10px 14px;font-weight:600;font-size:14px;background:var(--line)}
+.btn.primary{background:var(--berry);color:var(--on)}
+.btn.ghost{background:transparent;border:1px solid var(--line)}
+.btn.danger{background:transparent;border:1px solid var(--berry);color:var(--berry)}
+
+/* calendar */
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:12px 10px 14px}
+.cal-h{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 10px}
+.cal-h h2{margin:0;font-family:var(--display);font-size:16px;font-weight:500}
+.nav{display:flex;gap:4px}
+.nav button{width:36px;height:36px;border-radius:10px;border:0;background:transparent;font-size:20px;line-height:1}
+.nav button:hover{background:var(--line)}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.wd{text-align:center;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding-bottom:4px}
+.day{position:relative;aspect-ratio:1/1;max-width:100%;border:0;background:transparent;border-radius:50%;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;font-size:15px;font-weight:500}
+.day.out{visibility:hidden}
+.day.past{color:var(--ink)}
+.day.fert{background:var(--sea-soft);color:var(--sea);border-radius:10px}
+.day.ov{background:var(--sea);color:var(--on);border-radius:50%}
+.day.pp{box-shadow:inset 0 0 0 2px var(--berry);color:var(--berry);border-radius:50%;background:transparent}
+.day.pp{background-image:radial-gradient(circle,transparent 60%,transparent 61%)}
+.day.per{background:var(--berry);color:var(--on);border-radius:50%}
+.day.today::after{content:"";position:absolute;inset:-3px;border-radius:inherit;border:2px solid var(--ink)}
+.day.today.fert::after{border-radius:12px}
+.marks{position:absolute;bottom:3px;left:0;right:0;display:flex;justify-content:center;gap:2px}
+.marks i{width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.75}
+.marks i.h{background:var(--berry);opacity:1}
+.day.per .marks i.h{background:var(--on)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;padding:12px 4px 0;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:50%;display:inline-block}
+.sw.per{background:var(--berry)} .sw.pp{box-shadow:inset 0 0 0 2px var(--berry)}
+.sw.fert{background:var(--sea-soft);border-radius:3px} .sw.ov{background:var(--sea)}
+.hint{margin-top:14px;padding:14px;border-radius:16px;background:var(--berry-soft);color:var(--ink);font-size:14px}
+.hint b{color:var(--berry)}
+.note{color:var(--muted);font-size:12px;margin-top:16px}
+
+/* sections */
+h3{font-family:var(--display);font-weight:500;font-size:15px;margin:22px 0 10px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+.stat b{display:block;font-family:var(--display);font-size:22px;font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted);font-size:12px}
+.list{display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{background:var(--surface);padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
+.row .d{font-weight:600}
+.row .m{color:var(--muted);font-size:13px}
+.row .n{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.bar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--line);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.chart{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;overflow-x:auto}
+.chart svg{display:block;width:100%;height:auto}
+.field{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);padding:12px 14px}
+.field label{min-width:0}
+.field small{display:block;color:var(--muted);font-size:12px}
+.stepper{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.stepper button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:transparent;font-size:18px}
+.stepper output{min-width:28px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+textarea,input[type=number]{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);padding:10px 12px;font:inherit}
+textarea{min-height:80px;resize:vertical}
+.stack{display:flex;flex-direction:column;gap:8px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30}
+.warnbar{background:var(--berry-soft);padding:10px 12px;border-radius:12px;font-size:13px;margin-bottom:8px}
+
+/* tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);z-index:10}
+.tabs-in{max-width:480px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+.tabs button{border:0;background:transparent;padding:10px 0 12px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabs button[aria-selected="true"]{color:var(--berry);font-weight:600}
+.tabs svg{width:22px;height:22px}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,6,12,.45);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:520px;max-height:88%;overflow-y:auto;border-radius:22px 22px 0 0;padding:8px 16px calc(20px + env(safe-area-inset-bottom,0px));box-sizing:border-box;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 10px}
+.sheet-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.sheet-h h2{margin:0;font-family:var(--display);font-size:18px;font-weight:500}
+.sheet-h p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.x{border:0;background:var(--line);width:34px;height:34px;border-radius:50%;font-size:18px;flex-shrink:0}
+.grp{margin-top:16px}
+.grp > .lbl{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 12px;font-size:14px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips.flow .chip[aria-pressed="true"]{background:var(--berry);border-color:var(--berry);color:var(--on)}
+.chips.ovt .chip[aria-pressed="true"]{background:var(--sea);border-color:var(--sea);color:var(--on)}
+.temp{display:flex;gap:8px;align-items:center}
+.temp input{max-width:140px}
+.fill{margin-top:8px}
+</style>
+
+<div class="app">
+  <div class="top">
+    <div class="brand">Л<span>у</span>на</div>
+    <div class="today-lbl" id="todayLbl"></div>
+  </div>
+  <div id="storeWarn" class="warnbar" hidden>Браузер не даёт сохранять данные в этом режиме. Откройте страницу в обычном окне, иначе отметки пропадут после закрытия.</div>
+
+  <!-- CALENDAR -->
+  <section class="view" id="v-cal">
+    <div class="hero">
+      <div class="ring" id="ring"></div>
+      <div class="status" id="status"></div>
+    </div>
+    <div class="cal">
+      <div class="cal-h">
+        <h2 id="monLbl"></h2>
+        <div class="nav">
+          <button id="prevM" aria-label="Предыдущий месяц">‹</button>
+          <button id="todayBtn" aria-label="К сегодняшнему дню" style="font-size:13px;width:auto;padding:0 10px">Сегодня</button>
+          <button id="nextM" aria-label="Следующий месяц">›</button>
+        </div>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="legend">
+        <span><i class="sw per"></i>Месячные</span>
+        <span><i class="sw pp"></i>Прогноз</span>
+        <span><i class="sw fert"></i>Фертильные дни</span>
+        <span><i class="sw ov"></i>Овуляция</span>
+      </div>
+    </div>
+    <div id="emptyHint" class="hint" hidden>Нажмите на <b>первый день последних месячных</b> в календаре и отметьте его. После этого появится прогноз следующих месячных и овуляции. Чем больше циклов отмечено, тем точнее прогноз.</div>
+  </section>
+
+  <!-- HISTORY -->
+  <section class="view" id="v-hist" hidden>
+    <h3 style="margin-top:8px">Средние значения</h3>
+    <div class="stats" id="stats"></div>
+    <div id="tempWrap"></div>
+    <h3>Циклы</h3>
+    <div class="list" id="cycles"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section class="view" id="v-set" hidden>
+    <h3 style="margin-top:8px">Параметры прогноза</h3>
+    <div class="list">
+      <div class="field"><label>Длина цикла<small>Пока отмечено меньше двух циклов</small></label>
+        <div class="stepper" data-k="cycle"><button aria-label="Меньше">−</button><output></output><button aria-label="Больше">+</button></div></div>
+      <div class="field"><label>Длительность месячных<small>Пока нет отмеченных месячных</small></label>
+        <div class="stepper" data-k="period"><button aria-label="Меньше">−</button><output></output><button aria-label="Больше">+</button></div></div>
+      <div class="field"><label>Лютеиновая фаза<small>Дней от овуляции до месячных, обычно 14</small></label>
+        <div class="stepper" data-k="luteal"><button aria-label="Меньше">−</button><output></output><button aria-label="Больше">+</button></div></div>
+    </div>
+
+    <h3>Резервная копия</h3>
+    <div class="stack">
+      <p class="sub" style="margin:0">Данные хранятся только на этом телефоне. Время от времени копируйте резервную копию и сохраняйте её, например, в заметках или отправляйте себе в мессенджер.</p>
+      <button class="btn primary" id="copyBk">Скопировать резервную копию</button>
+      <textarea id="restoreTx" placeholder="Вставьте сюда резервную копию, чтобы восстановить данные"></textarea>
+      <button class="btn ghost" id="restoreBtn">Восстановить из копии</button>
+    </div>
+
+    <h3>Удаление</h3>
+    <button class="btn danger" id="wipe">Удалить все отметки</button>
+
+    <p class="note">Прогноз считается по календарному методу: овуляция примерно за 14 дней до следующих месячных, фертильное окно — 5 дней до неё и день после. Это оценка, а не медицинский прибор. Для контрацепции календарному прогнозу доверять нельзя. Если цикл нерегулярный, точнее помогут тесты на овуляцию и базальная температура.</p>
+  </section>
+</div>
+
+<nav class="tabs" role="tablist">
+  <div class="tabs-in">
+    <button role="tab" data-v="cal" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Календарь</button>
+    <button role="tab" data-v="hist" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V5M16 19v-7M21 19H3"/></svg>История</button>
+    <button role="tab" data-v="set" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Настройки</button>
+  </div>
+</nav>
+
+<div class="scrim" id="scrim" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const MS=864e5, KEY='luna.cycle.v1';
+const MON=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const MON_G=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const WD=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+const WD_F=['понедельник','вторник','среда','четверг','пятница','суббота','воскресенье'];
+const FLOW=['Нет','Мажущие','Слабые','Средние','Обильные'];
+const SYM=['Спазмы','Боль внизу живота','Боль в груди','Головная боль','Вздутие','Акне','Усталость','Тошнота','Тяга к сладкому','Обильные прозрачные выделения','Боль в пояснице','Бессонница'];
+const MOOD=['Отличное','Спокойное','Грустное','Раздражительное','Тревожное'];
+
+const $=s=>document.querySelector(s);
+const toDn=k=>{const [y,m,d]=k.split('-').map(Number);return Date.UTC(y,m-1,d)/MS};
+const toKey=dn=>new Date(dn*MS).toISOString().slice(0,10);
+const todayDn=()=>{const n=new Date();return Date.UTC(n.getFullYear(),n.getMonth(),n.getDate())/MS};
+const parts=dn=>{const d=new Date(dn*MS);return {y:d.getUTCFullYear(),m:d.getUTCMonth(),d:d.getUTCDate(),w:(d.getUTCDay()+6)%7}};
+const fmt=dn=>{const p=parts(dn);return p.d+' '+MON_G[p.m]};
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const pl=(n,a,b,c)=>{n=Math.abs(n);const m10=n%10,m100=n%100;return m10===1&&m100!==11?a:(m10>=2&&m10<=4&&(m100<10||m100>=20)?b:c)};
+const days=n=>n+' '+pl(n,'день','дня','дней');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- storage ---------- */
+let state={days:{},set:{cycle:28,period:5,luteal:14}};
+let canStore=true;
+try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);if(o&&o.days)state={days:o.days,set:Object.assign(state.set,o.set||{})}}
+  localStorage.setItem(KEY+'.t','1');localStorage.removeItem(KEY+'.t');}catch(e){canStore=false}
+$('#storeWarn').hidden=canStore;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function getDay(dn){return state.days[toKey(dn)]||{}}
+function setDay(dn,patch){const k=toKey(dn);const d=Object.assign({},state.days[k]||{},patch);
+  Object.keys(d).forEach(x=>{const v=d[x];if(v===0||v===''||v==null||v===false||(Array.isArray(v)&&!v.length))delete d[x]});
+  if(Object.keys(d).length)state.days[k]=d;else delete state.days[k];save();}
+
+/* ---------- model ---------- */
+function model(){
+  const S=state.set,T=todayDn();
+  const pd=Object.keys(state.days).filter(k=>state.days[k].p>0).map(toDn).sort((a,b)=>a-b);
+  const groups=[];for(const d of pd){const g=groups[groups.length-1];if(g&&d-g[g.length-1]<=2)g.push(d);else groups.push([d])}
+  const starts=groups.map(g=>g[0]);
+  const ends=groups.map(g=>g[g.length-1]);
+  let plens=groups.map((g,i)=>ends[i]-starts[i]+1);
+  if(plens.length>1&&ends[ends.length-1]>=T-1)plens=plens.slice(0,-1);
+  const cyc=[];for(let i=1;i<starts.length;i++)cyc.push(starts[i]-starts[i-1]);
+  const valid=cyc.filter(c=>c>=18&&c<=50).slice(-6);
+  const avgC=valid.length?Math.round(mean(valid)):S.cycle;
+  const avgP=plens.length?clamp(Math.round(mean(plens.slice(-6))),2,10):S.period;
+  const L=S.luteal,map={};
+  const mark=(d,o)=>{map[d]=Object.assign(map[d]||{},o)};
+  groups.forEach((g,i)=>{for(let d=starts[i];d<=ends[i];d++)mark(d,{per:1})});
+  const last=starts.length?starts[starts.length-1]:null;
+  let next=null,delay=0,preds=[];
+  if(last!=null){
+    next=last+avgC;
+    if(T>next&&ends[ends.length-1]<T)delay=T-next;
+    const base=delay>0?T+1:next;
+    for(let k=0;k<7;k++)preds.push(base+k*avgC);
+    preds.forEach(p=>{for(let d=p;d<p+avgP;d++)if(!(map[d]&&map[d].per))mark(d,{pp:1})});
+    const all=starts.concat(preds);
+    for(let i=0;i<all.length-1;i++){
+      const s=all[i],n=all[i+1],len=n-s;
+      if(len<18||len>50)continue;
+      const ov=n-L;
+      for(let d=ov-5;d<=ov+1;d++)if(d>s)mark(d,{fert:1});
+      mark(ov,{ov:1});
+    }
+  }
+  return {T,groups,starts,ends,plens,cyc,valid,avgC,avgP,L,map,last,next,delay,preds};
+}
+
+/* ---------- ring + status ---------- */
+function renderHero(M){
+  const T=M.T,ring=$('#ring'),st=$('#status');
+  if(M.last==null){
+    ring.innerHTML=ringSvg(M.avgC,M.avgP,null,M.L)+'<div class="ring-c"><b>—</b><small>нет данных</small></div>';
+    st.innerHTML='<span class="phase">Начало</span><div class="headline">Отметьте первый день последних месячных</div><div class="quick"><button class="btn primary" id="qStart">Месячные начались сегодня</button></div>';
+    $('#qStart').onclick=()=>{setDay(T,{p:3});render();toast('Отмечено: месячные, '+fmt(T))};
+    return;
+  }
+  const cd=T-M.last+1, info=M.map[T]||{}, nextP=M.preds[0], toNext=nextP-T;
+  const curLen=Math.max(M.avgC,cd);
+  const ovDay=M.delay>0?null:(M.last+M.avgC-M.L);
+  let phase,cls,head,sub=[];
+  if(info.per){const g=M.groups[M.groups.length-1];phase='Месячные';cls='per';head='Месячные, '+(T-g[0]+1)+'-й день';sub.push('Следующие примерно '+fmt(nextP));}
+  else if(M.delay>0){phase='Задержка';cls='late';head='Задержка '+days(M.delay);sub.push('Ожидались '+fmt(M.next)+'. Если задержка больше недели, имеет смысл сделать тест на беременность.');}
+  else if(info.ov){phase='Овуляция';cls='ov';head='Сегодня ожидается овуляция';sub.push('Самая высокая вероятность зачатия');}
+  else if(info.fert){phase='Фертильное окно';cls='fert';head='Фертильные дни';sub.push(ovDay>T?'Овуляция через '+days(ovDay-T):'Высокая вероятность зачатия');}
+  else if(ovDay!=null&&T<ovDay){phase='Фолликулярная фаза';cls='';head='Месячные через '+days(toNext);sub.push('Фертильное окно с '+fmt(ovDay-5)+', овуляция около '+fmt(ovDay));}
+  else{phase='Лютеиновая фаза';cls='';head=toNext===0?'Месячные ожидаются сегодня':'Месячные через '+days(toNext);sub.push('Примерно '+fmt(nextP));}
+  ring.innerHTML=ringSvg(curLen,M.avgP,cd,M.L,M.avgC)+'<div class="ring-c"><b>'+cd+'</b><small>день цикла</small></div>';
+  st.innerHTML='<span class="phase '+cls+'">'+phase+'</span><div class="headline">'+head+'</div><div class="sub">'+sub.join('<br>')+'</div>'+
+    (info.per?'':'<div class="quick"><button class="btn primary" id="qStart">Начались сегодня</button></div>');
+  const q=$('#qStart');if(q)q.onclick=()=>{setDay(T,{p:3});render();toast('Отмечено: месячные, '+fmt(T))};
+}
+function ringSvg(len,per,cd,L,avgC){
+  const r=62,C=2*Math.PI*r,seg=(a,b,col,w)=>{const s=(a-1)/len*C,l=Math.max(.5,(b-a+1)/len*C-2);
+    return '<circle cx="75" cy="75" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="'+(w||12)+'" stroke-dasharray="'+l+' '+C+'" stroke-dashoffset="'+(-s)+'" transform="rotate(-90 75 75)" stroke-linecap="round"/>'};
+  let h='<svg viewBox="0 0 150 150" aria-hidden="true"><circle cx="75" cy="75" r="'+r+'" fill="none" stroke="var(--line)" stroke-width="12"/>';
+  h+=seg(1,per,'var(--berry)');
+  const base=avgC||len, ov=base-L+1;
+  if(ov>6)h+=seg(ov-5,ov+1,'var(--sea-soft)')+seg(ov,ov,'var(--sea)');
+  if(cd){const a=((cd-.5)/len)*2*Math.PI-Math.PI/2,x=75+r*Math.cos(a),y=75+r*Math.sin(a);
+    h+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="9" fill="var(--surface)" stroke="var(--ink)" stroke-width="3"/>';}
+  return h+'</svg>';
+}
+
+/* ---------- calendar ---------- */
+let view=(()=>{const p=parts(todayDn());return {y:p.y,m:p.m}})();
+function renderCal(M){
+  $('#monLbl').textContent=MON[view.m]+' '+view.y;
+  const first=Date.UTC(view.y,view.m,1)/MS, lead=parts(first).w, dim=new Date(Date.UTC(view.y,view.m+1,0)).getUTCDate();
+  let h=WD.map(w=>'<div class="wd">'+w+'</div>').join('');
+  for(let i=0;i<lead;i++)h+='<div class="day out"></div>';
+  for(let i=0;i<dim;i++){
+    const dn=first+i,info=M.map[dn]||{},d=getDay(dn),c=['day'];
+    if(info.per)c.push('per');else if(info.pp&&dn>=M.T)c.push('pp');else if(info.ov)c.push('ov');else if(info.fert)c.push('fert');
+    if(dn===M.T)c.push('today');
+    let mk='';
+    if(d.x)mk+='<i class="h"></i>';
+    if((d.s&&d.s.length)||d.n||d.t||d.mo||d.o)mk+='<i></i>';
+    const lbl=fmt(dn)+(info.per?', месячные':info.pp?', прогноз месячных':info.ov?', овуляция':info.fert?', фертильный день':'');
+    h+='<button class="'+c.join(' ')+'" data-dn="'+dn+'" aria-label="'+lbl+'">'+(i+1)+(mk?'<span class="marks">'+mk+'</span>':'')+'</button>';
+  }
+  const g=$('#grid');g.innerHTML=h;
+  $('#emptyHint').hidden=M.last!=null;
+}
+$('#grid').addEventListener('click',e=>{const b=e.target.closest('button.day');if(b)openDay(+b.dataset.dn)});
+$('#prevM').onclick=()=>shift(-1);$('#nextM').onclick=()=>shift(1);
+$('#todayBtn').onclick=()=>{const p=parts(todayDn());view={y:p.y,m:p.m};render()};
+function shift(k){let m=view.m+k,y=view.y;if(m<0){m=11;y--}if(m>11){m=0;y++}view={y,m};render()}
+(()=>{let x0=null,y0=null;const g=$('#grid');
+  g.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
+  g.addEventListener('touchend',e=>{if(x0==null)return;const dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;
+    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)shift(dx<0?1:-1);x0=null},{passive:true});})();
+
+/* ---------- day sheet ---------- */
+let openDn=null;
+function openDay(dn){openDn=dn;drawSheet();$('#scrim').hidden=false;document.body.style.overflow='hidden'}
+function closeSheet(){$('#scrim').hidden=true;document.body.style.overflow='';openDn=null;render()}
+$('#scrim').addEventListener('click',e=>{if(e.target.id==='scrim')closeSheet()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&openDn!=null)closeSheet()});
+function chipRow(cls,items,isOn,attr){return '<div class="chips '+cls+'">'+items.map((t,i)=>'<button class="chip" '+attr+'="'+i+'" aria-pressed="'+isOn(i,t)+'">'+esc(t)+'</button>').join('')+'</div>'}
+function drawSheet(){
+  const dn=openDn,M=model(),d=getDay(dn),info=M.map[dn]||{},p=parts(dn);
+  const tag=info.per?'Месячные':info.pp?'Прогноз: месячные':info.ov?'Прогноз: овуляция':info.fert?'Прогноз: фертильный день':(dn>M.T?'Будущий день':'');
+  const prevPer=getDay(dn-1).p>0, nextEmpty=!getDay(dn+1).p;
+  const sym=d.s||[];
+  let h='<div class="grab"></div><div class="sheet-h"><div><h2>'+p.d+' '+MON_G[p.m]+'</h2><p>'+WD_F[p.w]+(tag?' · '+tag:'')+'</p></div><button class="x" id="sx" aria-label="Закрыть">×</button></div>';
+  h+='<div class="grp"><div class="lbl">Месячные</div>'+chipRow('flow',FLOW,i=>(d.p||0)===i,'data-p')+
+     (d.p>0&&!prevPer&&nextEmpty?'<button class="btn ghost fill" id="fillP">Отметить ещё '+days(M.avgP-1)+' подряд</button>':'')+'</div>';
+  h+='<div class="grp"><div class="lbl">Тест на овуляцию</div>'+chipRow('ovt',['Не делали','Отрицательный','Положительный'],i=>(d.o||0)===i,'data-o')+'</div>';
+  h+='<div class="grp"><div class="lbl">Самочувствие</div>'+chipRow('',SYM,(i,t)=>sym.includes(t),'data-s')+'</div>';
+  h+='<div class="grp"><div class="lbl">Настроение</div>'+chipRow('',MOOD,(i,t)=>d.mo===t,'data-mo')+'</div>';
+  h+='<div class="grp"><div class="lbl">Близость</div>'+chipRow('',['Не было','Была'],i=>(d.x?1:0)===i,'data-x')+'</div>';
+  h+='<div class="grp"><div class="lbl">Базальная температура, °C</div><div class="temp"><input id="tIn" type="number" inputmode="decimal" step="0.01" min="35" max="38.5" placeholder="36,60" value="'+(d.t||'')+'"></div></div>';
+  h+='<div class="grp"><div class="lbl">Заметка</div><textarea id="nIn" placeholder="Что угодно об этом дне">'+esc(d.n||'')+'</textarea></div>';
+  h+='<div class="grp"><button class="btn primary" id="sDone" style="width:100%">Готово</button></div>';
+  const sh=$('#sheet');sh.innerHTML=h;
+  $('#sx').onclick=closeSheet;$('#sDone').onclick=closeSheet;
+  sh.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{setDay(dn,{p:+b.dataset.p});drawSheet()});
+  sh.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{setDay(dn,{o:+b.dataset.o});drawSheet()});
+  sh.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{setDay(dn,{x:+b.dataset.x});drawSheet()});
+  sh.querySelectorAll('[data-mo]').forEach(b=>b.onclick=()=>{const t=MOOD[+b.dataset.mo];setDay(dn,{mo:d.mo===t?'':t});drawSheet()});
+  sh.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const t=SYM[+b.dataset.s];const s=new Set(getDay(dn).s||[]);s.has(t)?s.delete(t):s.add(t);setDay(dn,{s:[...s]});drawSheet()});
+  const f=$('#fillP');if(f)f.onclick=()=>{for(let i=1;i<M.avgP;i++)if(!getDay(dn+i).p)setDay(dn+i,{p:i<2?3:2});closeSheet();toast('Отмечено '+days(M.avgP))};
+  $('#tIn').onchange=e=>{const v=parseFloat(String(e.target.value).replace(',','.'));setDay(dn,{t:isFinite(v)&&v>34&&v<43?Math.round(v*100)/100:0})};
+  $('#nIn').oninput=e=>setDay(dn,{n:e.target.value});
+}
+
+/* ---------- history ---------- */
+function renderHist(M){
+  const reg=M.valid.length>=3?(Math.max(...M.valid)-Math.min(...M.valid)<=7?'регулярный':'нерегулярный'):'мало данных';
+  $('#stats').innerHTML=
+    '<div class="stat"><b>'+M.avgC+'</b><small>дней цикл'+(M.valid.length?'':' (по настройке)')+'</small></div>'+
+    '<div class="stat"><b>'+M.avgP+'</b><small>дней месячные</small></div>'+
+    '<div class="stat"><b style="font-size:15px;line-height:1.9">'+reg+'</b><small>'+(M.valid.length?'разброс '+Math.min(...M.valid)+'–'+Math.max(...M.valid):'нужно 3+ цикла')+'</small></div>';
+  // cycles
+  let rows='';
+  for(let i=M.starts.length-1;i>=0;i--){
+    const s=M.starts[i],e=M.ends[i],cur=i===M.starts.length-1,len=cur?(M.T-s+1):(M.starts[i+1]-s),pl=e-s+1;
+    const ovRel=cur?null:len-M.L;
+    const W=Math.max(len,1);
+    const bar='<div class="bar"><i style="width:'+(pl/W*100)+'%;background:var(--berry)"></i>'+(ovRel&&ovRel>pl?'<i style="width:'+((ovRel-6-pl)/W*100)+'%"></i><i style="width:'+(6/W*100)+'%;background:var(--sea-soft)"></i><i style="width:'+(1/W*100)+'%;background:var(--sea)"></i>':'')+'</div>';
+    rows+='<div class="row"><div><div class="d">'+fmt(s)+(parts(s).y!==parts(M.T).y?' '+parts(s).y:'')+'</div><div class="m">месячные '+days(pl)+(cur?' · идёт сейчас':'')+'</div></div><div class="n">'+(cur?'день '+len:days(len))+'</div>'+bar+'</div>';
+  }
+  $('#cycles').innerHTML=rows||'<div class="row"><div class="m">Здесь появятся циклы, когда вы отметите месячные в календаре.</div></div>';
+  // temperature chart for current cycle
+  const tw=$('#tempWrap');tw.innerHTML='';
+  if(M.last!=null){
+    const pts=[];for(let d=M.last;d<=M.T;d++){const t=getDay(d).t;if(t)pts.push([d-M.last+1,t])}
+    if(pts.length>=2){
+      const W=320,H=150,pad=28,maxX=Math.max(M.avgC,pts[pts.length-1][0]);
+      const ts=pts.map(p=>p[1]),lo=Math.min(...ts)-.1,hi=Math.max(...ts)+.1;
+      const X=x=>pad+(x-1)/(maxX-1)*(W-pad-8),Y=t=>8+(hi-t)/(hi-lo)*(H-8-22);
+      const ov=M.avgC-M.L;
+      let s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Базальная температура в текущем цикле">';
+      s+='<rect x="'+X(ov-5)+'" y="8" width="'+(X(ov+1)-X(ov-5))+'" height="'+(H-30)+'" fill="var(--sea-soft)"/>';
+      [lo+.1,(lo+hi)/2,hi-.1].forEach(t=>{s+='<line x1="'+pad+'" x2="'+(W-8)+'" y1="'+Y(t)+'" y2="'+Y(t)+'" stroke="var(--line)"/><text x="'+(pad-4)+'" y="'+(Y(t)+4)+'" text-anchor="end" font-size="10" fill="var(--muted)">'+t.toFixed(1)+'</text>'});
+      [1,Math.round(maxX/2),maxX].forEach(x=>{s+='<text x="'+X(x)+'" y="'+(H-6)+'" text-anchor="middle" font-size="10" fill="var(--muted)">'+x+'</text>'});
+      s+='<polyline fill="none" stroke="var(--berry)" stroke-width="2" points="'+pts.map(p=>X(p[0])+','+Y(p[1])).join(' ')+'"/>';
+      pts.forEach((p,i)=>{s+='<circle cx="'+X(p[0])+'" cy="'+Y(p[1])+'" r="'+(i===pts.length-1?4:2.5)+'" fill="var(--berry)"/>'});
+      tw.innerHTML='<h3>Базальная температура · текущий цикл</h3><div class="chart">'+s+'</svg></div><p class="note" style="margin-top:6px">Подъём на 0,2–0,4 °C, который держится 3 дня, обычно означает, что овуляция прошла. Зелёная полоса — прогноз фертильного окна.</p>';
+    }
+  }
+}
+
+/* ---------- settings ---------- */
+const LIM={cycle:[20,45],period:[2,10],luteal:[10,16]};
+function renderSet(){document.querySelectorAll('.stepper').forEach(s=>{s.querySelector('output').textContent=state.set[s.dataset.k]})}
+document.querySelectorAll('.stepper').forEach(s=>{const k=s.dataset.k,[a,b]=s.querySelectorAll('button');
+  const ch=n=>{state.set[k]=clamp(state.set[k]+n,LIM[k][0],LIM[k][1]);save();render()};a.onclick=()=>ch(-1);b.onclick=()=>ch(1)});
+$('#copyBk').onclick=()=>{const txt=JSON.stringify(state);const tx=$('#restoreTx');
+  navigator.clipboard.writeText(txt).then(()=>toast('Копия скопирована. Сохраните её в заметках')).catch(()=>{tx.value=txt;tx.select();toast('Выделите текст в поле и скопируйте')})};
+let restoreArm=false;
+$('#restoreBtn').onclick=()=>{const b=$('#restoreBtn');let o;
+  try{o=JSON.parse($('#restoreTx').value.trim());if(!o||typeof o.days!=='object')throw 0}catch(e){toast('Не похоже на резервную копию. Вставьте текст целиком');return}
+  if(!restoreArm){restoreArm=true;b.textContent='Текущие данные заменятся. Нажмите ещё раз';setTimeout(()=>{restoreArm=false;b.textContent='Восстановить из копии'},4000);return}
+  state={days:o.days,set:Object.assign({cycle:28,period:5,luteal:14},o.set||{})};save();restoreArm=false;b.textContent='Восстановить из копии';$('#restoreTx').value='';render();toast('Данные восстановлены')};
+let wipeArm=false;
+$('#wipe').onclick=()=>{const b=$('#wipe');
+  if(!wipeArm){wipeArm=true;b.textContent='Точно удалить? Нажмите ещё раз';setTimeout(()=>{wipeArm=false;b.textContent='Удалить все отметки'},4000);return}
+  state.days={};save();wipeArm=false;b.textContent='Удалить все отметки';render();toast('Все отметки удалены')};
+
+/* ---------- tabs / misc ---------- */
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));
+  ['cal','hist','set'].forEach(v=>$('#v-'+v).hidden=v!==b.dataset.v);window.scrollTo(0,0);render()});
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(tt);tt=setTimeout(()=>t.hidden=true,2400)}
+
+function render(){
+  const M=model(),T=M.T,p=parts(T);
+  $('#todayLbl').textContent='Сегодня '+p.d+' '+MON_G[p.m];
+  renderHero(M);renderCal(M);renderHist(M);renderSet();
+}
+render();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&openDn==null)render()});
+})();
+</script>
+
+</body></html>
